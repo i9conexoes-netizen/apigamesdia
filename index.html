@@ -92,58 +92,55 @@
     </div>
 
     <div id="grid-jogos">
-        <div style="text-align:center; padding:50px;"><i class="fas fa-spinner fa-spin"></i> Sincronizando com Satélite Inove...</div>
+        <div style="text-align:center; padding:50px;"><i class="fas fa-spinner fa-spin"></i> Conectando ao Satélite...</div>
     </div>
 </div>
 
 <script>
-    // URLs para pegar jogos do mundo e do Brasil
-    const apis = [
-        'https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard',
-        'https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard'
-    ];
+    // Usando um proxy de backup para evitar o erro de "NADA MOSTRANDO"
+    const proxyUrl = "https://api.allorigins.win/get?url=";
+    const apiBrasil = "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard";
+    const apiGeral = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard";
 
     async function carregarJogos() {
         try {
             let todosEventos = [];
-            for (const url of apis) {
-                const response = await fetch(url);
-                const data = await response.json();
+            
+            // Tenta pegar os dados das duas fontes
+            const urls = [apiBrasil, apiGeral];
+            
+            for(let base of urls) {
+                const response = await fetch(proxyUrl + encodeURIComponent(base + "?t=" + Date.now()));
+                const json = await response.json();
+                const data = JSON.parse(json.contents);
                 if (data.events) todosEventos = [...todosEventos, ...data.events];
             }
-            
-            // Remove jogos duplicados pelo ID
+
+            // Remove duplicados e ordena
             const eventosUnicos = Array.from(new Set(todosEventos.map(e => e.id)))
                 .map(id => todosEventos.find(e => e.id === id));
-
-            // Ordena por horário
             eventosUnicos.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             desenharJogos(eventosUnicos);
         } catch (error) {
-            document.getElementById('grid-jogos').innerHTML = "<p style='text-align:center'>Erro ao conectar. Recarregue a página.</p>";
+            document.getElementById('grid-jogos').innerHTML = "<p style='text-align:center'>Erro ao carregar. Clique no título para tentar novamente.</p>";
         }
     }
 
-    // Função para identificar o canal baseado no nome da liga
-    function identificarCanal(evento) {
-        // Tenta pegar o canal real da ESPN
+    function definirCanal(evento) {
         const canalOficial = evento.competitions[0].broadcasts?.[0]?.names?.[0];
         if (canalOficial) return canalOficial;
 
-        // Se não tiver, chuta baseado na liga
-        const liga = evento.season?.slug || "";
-        const nomeLiga = evento.competitions[0].type.abbreviation?.toLowerCase() || "";
-        const descLiga = evento.competitions[0].description?.toLowerCase() || "";
+        const liga = (evento.competitions[0].type.name || "").toLowerCase();
+        const desc = (evento.competitions[0].description || "").toLowerCase();
 
-        if (descLiga.includes("premier")) return "ESPN / Star+";
-        if (descLiga.includes("laliga")) return "ESPN / Star+";
-        if (descLiga.includes("brasileiro") || descLiga.includes("brazil")) return "Premiere / Globo";
-        if (descLiga.includes("bundesliga")) return "OneFootball";
-        if (descLiga.includes("champions")) return "TNT / Max";
-        if (descLiga.includes("serie a") && descLiga.includes("italy")) return "Star+ / Paramount+";
+        if (desc.includes("premier")) return "ESPN / Star+";
+        if (desc.includes("bra") || desc.includes("brasileiro")) return "Premiere / Globo";
+        if (desc.includes("champions")) return "TNT / Max";
+        if (desc.includes("laliga")) return "ESPN";
+        if (desc.includes("bundesliga")) return "CazéTV / OneFootball";
         
-        return "App Inove / TV";
+        return "Verificar no App";
     }
 
     function desenharJogos(eventos) {
@@ -164,9 +161,6 @@
             const timeCasa = evento.competitions[0].competitors[0];
             const timeFora = evento.competitions[0].competitors[1];
 
-            // Pega o canal usando a nossa função inteligente
-            const transmissao = identificarCanal(evento);
-
             const html = `
                 <div class="match-card">
                     <div class="status-box">
@@ -179,9 +173,7 @@
                             <img src="${timeCasa.team.logo || ''}" onerror="this.style.display='none'">
                             <div>${timeCasa.team.shortDisplayName}</div>
                         </div>
-                        <div class="vs">
-                            ${isLive ? `<span style="font-size:18px">${timeCasa.score} - ${timeFora.score}</span>` : 'VS'}
-                        </div>
+                        <div class="vs">${isLive ? timeCasa.score + ' - ' + timeFora.score : 'VS'}</div>
                         <div class="team">
                             <img src="${timeFora.team.logo || ''}" onerror="this.style.display='none'">
                             <div>${timeFora.team.shortDisplayName}</div>
@@ -189,8 +181,8 @@
                     </div>
 
                     <div class="channel-box">
-                        <span style="font-size:10px; color:#8b949e">ONDE ASSISTIR</span>
-                        <span class="channel-name">${transmissao}</span>
+                        <span style="font-size:10px; color:#8b949e">TRANSMISSÃO</span>
+                        <span class="channel-name">${definirCanal(evento)}</span>
                     </div>
                 </div>
             `;
@@ -200,10 +192,7 @@
 
     document.getElementById('data-atual').innerText = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
     carregarJogos();
-    
-    // Atualiza a cada 1 minuto
     setInterval(carregarJogos, 60000);
 </script>
-
 </body>
 </html>
