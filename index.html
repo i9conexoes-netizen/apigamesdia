@@ -65,7 +65,7 @@
         }
 
         .team { flex: 1; text-align: center; font-size: 14px; font-weight: 500; }
-        .team img { width: 35px; height: 35px; object-fit: contain; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto;}
+        .team img { width: 35px; height: 35px; object-fit: contain; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
 
         .vs { color: var(--primary); font-weight: 900; font-size: 14px; min-width: 60px; text-align: center; }
 
@@ -88,72 +88,94 @@
 <body>
 
 <div class="container">
-    <div class="header" onclick="carregarJogos()">
-        <h1><i class="fa-solid fa-bolt"></i> INOVE JOGOS HOJE</h1>
+    <div class="header" onclick="location.reload()" style="cursor:pointer">
+        <h1><i class="fa-solid fa-bolt"></i> INOVE - JOGOS AO VIVO</h1>
         <div id="data-atual" style="margin-top:5px; font-size:14px; color:#8b949e"></div>
     </div>
 
     <div id="grid-jogos">
-        <div style="text-align:center; padding:50px;"><i class="fas fa-sync fa-spin"></i> Sincronizando Satélites...</div>
+        <div style="text-align:center; padding:50px;"><i class="fas fa-spinner fa-spin"></i> Conectando Satélite Inove...</div>
     </div>
 </div>
 
 <script>
-    const API_MUNDO = 'https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard';
-    const API_BRASIL = 'https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard';
+    // URLs das APIs da ESPN
+    const apis = [
+        'https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard', // Série A
+        'https://site.api.espn.com/apis/site/v2/sports/soccer/bra.2/scoreboard', // Série B
+        'https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard'    // Geral
+    ];
 
     async function carregarJogos() {
         try {
-            // Busca dados do Mundo e do Brasil
-            const [resMundo, resBrasil] = await Promise.all([
-                fetch(API_MUNDO).then(r => r.json()),
-                fetch(API_BRASIL).then(r => r.json())
-            ]);
-
-            let todosEventos = [...(resMundo.events || []), ...(resBrasil.events || [])];
+            let todosEventos = [];
+            
+            for (const url of apis) {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.events) todosEventos = [...todosEventos, ...data.events];
+            }
 
             // Remove duplicados e ordena por hora
             const eventosUnicos = Array.from(new Set(todosEventos.map(e => e.id)))
                 .map(id => todosEventos.find(e => e.id === id));
+            
             eventosUnicos.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             desenharJogos(eventosUnicos);
         } catch (error) {
-            document.getElementById('grid-jogos').innerHTML = 
-                "<p style='text-align:center; color: #ff3e3e;'>Erro ao conectar. <br><br><b>Dica:</b> Suba este arquivo para o seu servidor (hospedagem) para carregar os jogos brasileiros.</p>";
+            document.getElementById('grid-jogos').innerHTML = "<p style='text-align:center'>Servidor instável. Recarregue a página em instantes.</p>";
         }
     }
 
+    // Função para identificar o canal baseado na liga
     function identificarCanal(evento) {
-        const canalOficial = evento.competitions[0].broadcasts?.[0]?.names?.[0];
+        // Tenta pegar o canal oficial primeiro
+        const canalOficial = evento.competitions[0].broadcasts?.[0]?.names?.[0] || 
+                             evento.competitions[0].broadcast?.[0]?.names?.[0];
+        
         if (canalOficial) return canalOficial;
 
-        const info = (evento.competitions[0].type.name + " " + (evento.competitions[0].description || "")).toLowerCase();
-        
-        // Se for Brasil, força Premiere/Globo
-        if (info.includes("bra") || info.includes("brasileiro")) return "Premiere / Globo";
+        // Mapeamento para ligas brasileiras e internacionais
+        const info = (evento.competitions[0].description || "").toLowerCase();
+        const shortName = (evento.competitions[0].type.abbreviation || "").toLowerCase();
+
+        if (info.includes("brazil") || info.includes("brasileiro") || shortName.includes("bra")) {
+            return "Premiere / Globo / SporTV";
+        }
         if (info.includes("premier")) return "ESPN / Star+";
         if (info.includes("champions")) return "TNT / Max";
-        if (info.includes("laliga")) return "ESPN";
-        
-        return "Consultar App";
+        if (info.includes("laliga")) return "ESPN / Star+";
+        if (info.includes("bundesliga")) return "CazéTV / OneFootball";
+        if (info.includes("serie a") && info.includes("ital")) return "Star+";
+
+        return "Inove TV / App";
     }
 
     function desenharJogos(eventos) {
         const container = document.getElementById('grid-jogos');
         container.innerHTML = '';
 
-        eventos.forEach(evento => {
-            const isLive = evento.status.type.state === 'in';
-            const hora = new Date(evento.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            const team1 = evento.competitions[0].competitors[0];
-            const team2 = evento.competitions[0].competitors[1];
+        if (!eventos || eventos.length === 0) {
+            container.innerHTML = '<p style="text-align:center">Nenhum jogo importante agendado para hoje.</p>';
+            return;
+        }
 
-            container.innerHTML += `
+        eventos.forEach(evento => {
+            const statusLabel = evento.status.type.shortDetail;
+            const isLive = evento.status.type.state === 'in';
+            const dataJogo = new Date(evento.date);
+            const hora = dataJogo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            const competitors = evento.competitions[0].competitors;
+            const team1 = competitors.find(c => c.homeAway === 'home') || competitors[0];
+            const team2 = competitors.find(c => c.homeAway === 'away') || competitors[1];
+
+            const html = `
                 <div class="match-card">
                     <div class="status-box">
                         <span class="time">${hora}</span>
-                        <span class="${isLive ? 'live' : ''}">${isLive ? '● AO VIVO' : evento.status.type.shortDetail}</span>
+                        <span class="${isLive ? 'live' : ''}">${isLive ? '● AO VIVO' : statusLabel}</span>
                     </div>
 
                     <div class="teams-box">
@@ -161,7 +183,9 @@
                             <img src="${team1.team.logo || ''}" onerror="this.style.display='none'">
                             <div>${team1.team.shortDisplayName}</div>
                         </div>
-                        <div class="vs">${isLive ? team1.score + ' - ' + team2.score : 'VS'}</div>
+                        <div class="vs">
+                            ${isLive ? `<span style="font-size:18px">${team1.score} - ${team2.score}</span>` : 'VS'}
+                        </div>
                         <div class="team">
                             <img src="${team2.team.logo || ''}" onerror="this.style.display='none'">
                             <div>${team2.team.shortDisplayName}</div>
@@ -169,17 +193,18 @@
                     </div>
 
                     <div class="channel-box">
-                        <span style="font-size:10px; color:#8b949e; text-transform: uppercase;">Transmissão</span>
+                        <span style="font-size:10px; color:#8b949e">TRANSMISSÃO</span>
                         <span class="channel-name">${identificarCanal(evento)}</span>
                     </div>
                 </div>
             `;
+            container.innerHTML += html;
         });
     }
 
     document.getElementById('data-atual').innerText = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
     carregarJogos();
-    setInterval(carregarJogos, 60000); 
+    setInterval(carregarJogos, 60000); // Atualiza a cada 1 minuto
 </script>
 
 </body>
