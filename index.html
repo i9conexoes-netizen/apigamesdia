@@ -12,6 +12,7 @@
             --card-bg: #1a1f24;
             --text: #ffffff;
             --accent: #ff3e3e;
+            --border: #30363d;
         }
 
         body {
@@ -32,6 +33,7 @@
             border-bottom: 3px solid var(--primary);
             margin-bottom: 20px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            cursor: pointer;
         }
 
         .header h1 { margin: 0; color: var(--primary); font-size: 26px; text-transform: uppercase; letter-spacing: 2px; }
@@ -44,7 +46,7 @@
             display: grid;
             grid-template-columns: 100px 1fr 140px;
             align-items: center;
-            border: 1px solid #30363d;
+            border: 1px solid var(--border);
             transition: 0.3s;
         }
 
@@ -63,13 +65,13 @@
         }
 
         .team { flex: 1; text-align: center; font-size: 14px; font-weight: 500; }
-        .team img { width: 35px; height: 35px; object-fit: contain; margin-bottom: 5px; }
+        .team img { width: 35px; height: 35px; object-fit: contain; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto;}
 
         .vs { color: var(--primary); font-weight: 900; font-size: 14px; min-width: 60px; text-align: center; }
 
         .channel-box {
             text-align: right;
-            border-left: 1px solid #30363d;
+            border-left: 1px solid var(--border);
             padding-left: 10px;
         }
 
@@ -79,120 +81,106 @@
 
         @media (max-width: 600px) {
             .match-card { grid-template-columns: 1fr; gap: 15px; text-align: center; }
-            .channel-box { border-left: none; border-top: 1px solid #30363d; padding: 10px 0 0; text-align: center; }
+            .channel-box { border-left: none; border-top: 1px solid var(--border); padding: 10px 0 0; text-align: center; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header" onclick="location.reload()" style="cursor:pointer">
-        <h1><i class="fa-solid fa-bolt"></i> INOVE - JOGOS AO VIVO</h1>
+    <div class="header" onclick="carregarJogos()">
+        <h1><i class="fa-solid fa-bolt"></i> INOVE JOGOS HOJE</h1>
         <div id="data-atual" style="margin-top:5px; font-size:14px; color:#8b949e"></div>
     </div>
 
     <div id="grid-jogos">
-        <div style="text-align:center; padding:50px;"><i class="fas fa-spinner fa-spin"></i> Conectando ao Satélite...</div>
+        <div style="text-align:center; padding:50px;"><i class="fas fa-sync fa-spin"></i> Sincronizando Satélites...</div>
     </div>
 </div>
 
 <script>
-    // Usando um proxy de backup para evitar o erro de "NADA MOSTRANDO"
-    const proxyUrl = "https://api.allorigins.win/get?url=";
-    const apiBrasil = "https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard";
-    const apiGeral = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard";
+    const API_MUNDO = 'https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard';
+    const API_BRASIL = 'https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard';
 
     async function carregarJogos() {
         try {
-            let todosEventos = [];
-            
-            // Tenta pegar os dados das duas fontes
-            const urls = [apiBrasil, apiGeral];
-            
-            for(let base of urls) {
-                const response = await fetch(proxyUrl + encodeURIComponent(base + "?t=" + Date.now()));
-                const json = await response.json();
-                const data = JSON.parse(json.contents);
-                if (data.events) todosEventos = [...todosEventos, ...data.events];
-            }
+            // Busca dados do Mundo e do Brasil
+            const [resMundo, resBrasil] = await Promise.all([
+                fetch(API_MUNDO).then(r => r.json()),
+                fetch(API_BRASIL).then(r => r.json())
+            ]);
 
-            // Remove duplicados e ordena
+            let todosEventos = [...(resMundo.events || []), ...(resBrasil.events || [])];
+
+            // Remove duplicados e ordena por hora
             const eventosUnicos = Array.from(new Set(todosEventos.map(e => e.id)))
                 .map(id => todosEventos.find(e => e.id === id));
             eventosUnicos.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             desenharJogos(eventosUnicos);
         } catch (error) {
-            document.getElementById('grid-jogos').innerHTML = "<p style='text-align:center'>Erro ao carregar. Clique no título para tentar novamente.</p>";
+            document.getElementById('grid-jogos').innerHTML = 
+                "<p style='text-align:center; color: #ff3e3e;'>Erro ao conectar. <br><br><b>Dica:</b> Suba este arquivo para o seu servidor (hospedagem) para carregar os jogos brasileiros.</p>";
         }
     }
 
-    function definirCanal(evento) {
+    function identificarCanal(evento) {
         const canalOficial = evento.competitions[0].broadcasts?.[0]?.names?.[0];
         if (canalOficial) return canalOficial;
 
-        const liga = (evento.competitions[0].type.name || "").toLowerCase();
-        const desc = (evento.competitions[0].description || "").toLowerCase();
-
-        if (desc.includes("premier")) return "ESPN / Star+";
-        if (desc.includes("bra") || desc.includes("brasileiro")) return "Premiere / Globo";
-        if (desc.includes("champions")) return "TNT / Max";
-        if (desc.includes("laliga")) return "ESPN";
-        if (desc.includes("bundesliga")) return "CazéTV / OneFootball";
+        const info = (evento.competitions[0].type.name + " " + (evento.competitions[0].description || "")).toLowerCase();
         
-        return "Verificar no App";
+        // Se for Brasil, força Premiere/Globo
+        if (info.includes("bra") || info.includes("brasileiro")) return "Premiere / Globo";
+        if (info.includes("premier")) return "ESPN / Star+";
+        if (info.includes("champions")) return "TNT / Max";
+        if (info.includes("laliga")) return "ESPN";
+        
+        return "Consultar App";
     }
 
     function desenharJogos(eventos) {
         const container = document.getElementById('grid-jogos');
         container.innerHTML = '';
 
-        if (!eventos || eventos.length === 0) {
-            container.innerHTML = '<p style="text-align:center">Nenhum jogo importante encontrado para hoje.</p>';
-            return;
-        }
-
         eventos.forEach(evento => {
-            const status = evento.status.type.shortDetail;
             const isLive = evento.status.type.state === 'in';
-            const dataJogo = new Date(evento.date);
-            const hora = dataJogo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-            const timeCasa = evento.competitions[0].competitors[0];
-            const timeFora = evento.competitions[0].competitors[1];
+            const hora = new Date(evento.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const team1 = evento.competitions[0].competitors[0];
+            const team2 = evento.competitions[0].competitors[1];
 
-            const html = `
+            container.innerHTML += `
                 <div class="match-card">
                     <div class="status-box">
                         <span class="time">${hora}</span>
-                        <span class="${isLive ? 'live' : ''}">${isLive ? '● AO VIVO' : status}</span>
+                        <span class="${isLive ? 'live' : ''}">${isLive ? '● AO VIVO' : evento.status.type.shortDetail}</span>
                     </div>
 
                     <div class="teams-box">
                         <div class="team">
-                            <img src="${timeCasa.team.logo || ''}" onerror="this.style.display='none'">
-                            <div>${timeCasa.team.shortDisplayName}</div>
+                            <img src="${team1.team.logo || ''}" onerror="this.style.display='none'">
+                            <div>${team1.team.shortDisplayName}</div>
                         </div>
-                        <div class="vs">${isLive ? timeCasa.score + ' - ' + timeFora.score : 'VS'}</div>
+                        <div class="vs">${isLive ? team1.score + ' - ' + team2.score : 'VS'}</div>
                         <div class="team">
-                            <img src="${timeFora.team.logo || ''}" onerror="this.style.display='none'">
-                            <div>${timeFora.team.shortDisplayName}</div>
+                            <img src="${team2.team.logo || ''}" onerror="this.style.display='none'">
+                            <div>${team2.team.shortDisplayName}</div>
                         </div>
                     </div>
 
                     <div class="channel-box">
-                        <span style="font-size:10px; color:#8b949e">TRANSMISSÃO</span>
-                        <span class="channel-name">${definirCanal(evento)}</span>
+                        <span style="font-size:10px; color:#8b949e; text-transform: uppercase;">Transmissão</span>
+                        <span class="channel-name">${identificarCanal(evento)}</span>
                     </div>
                 </div>
             `;
-            container.innerHTML += html;
         });
     }
 
     document.getElementById('data-atual').innerText = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
     carregarJogos();
-    setInterval(carregarJogos, 60000);
+    setInterval(carregarJogos, 60000); 
 </script>
+
 </body>
 </html>
