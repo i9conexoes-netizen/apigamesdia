@@ -30,34 +30,35 @@
         }
         input[type="file"] { display: none; }
 
-        /* Botão Enviar Todos (Novo) */
+        /* Botão Enviar Geral */
         #sendAllContainer {
-            display: none; /* Escondido por padrão */
+            display: none;
             margin-bottom: 20px;
             position: sticky;
             top: 10px;
             z-index: 100;
         }
         .send-all-btn {
-            background: #ff4757; color: white; width: 100%; padding: 18px;
+            background: #5865F2; color: white; width: 100%; padding: 18px;
             border-radius: 15px; border: none; font-weight: bold; font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); cursor: pointer;
+            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4); cursor: pointer;
+            transition: transform 0.2s;
         }
+        .send-all-btn:active { transform: scale(0.98); }
 
         /* Resultados */
         .result-item { background: #161616; padding: 15px; border-radius: 15px; margin-bottom: 25px; }
         img.output-img { width: 100%; border-radius: 10px; display: block; }
 
-        .save-btn, .discord-btn { 
-            color: white; padding: 12px 0; border-radius: 10px; 
+        .save-btn { 
+            background: #25d366; color: white; padding: 12px 0; border-radius: 10px; 
             font-weight: bold; display: block; margin-top: 15px;
             font-size: 0.9rem; border: none; width: 100%; cursor: pointer;
             text-decoration: none;
         }
-        .save-btn { background: #25d366; }
-        .discord-btn { background: #5865F2; }
         
         .status-text { margin: 15px 0; font-size: 0.9rem; color: #00d4ff; }
+        .hint { font-size: 0.7rem; color: #555; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -66,7 +67,7 @@
     <div class="header">
         <img src="https://i.imgur.com/lhhqACi.png" class="logo-main">
         <h2>Sports Editor</h2>
-        <p>A logo é aplicada automaticamente.</p>
+        <p>A logo da Inove é aplicada automaticamente.</p>
     </div>
 
     <div class="upload-wrapper">
@@ -76,7 +77,7 @@
     </div>
 
     <div id="sendAllContainer">
-        <button id="sendAllBtn" class="send-all-btn">ENVIAR TODAS AO DISCORD</button>
+        <button id="sendAllBtn" class="send-all-btn">ENVIAR TUDO AO DISCORD</button>
     </div>
 
     <div id="resultContainer"></div>
@@ -91,7 +92,7 @@
     
     const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1496868823637430405/S4JcU4341ORrWEJXKIfuiQ4yGUQUZn_RyZJtxKrbQc56AMTakNufby1vAohkP-Ht24-y";
 
-    let processedImages = []; // Array para guardar as imagens geradas
+    let processedImages = [];
 
     const userLogo = new Image();
     userLogo.crossOrigin = "anonymous"; 
@@ -102,7 +103,7 @@
         if (files.length === 0) return;
 
         resultContainer.innerHTML = "";
-        processedImages = []; // Limpa o array anterior
+        processedImages = [];
         sendAllContainer.style.display = "none";
         status.innerText = `Processando ${files.length} imagem(ns)...`;
 
@@ -113,45 +114,35 @@
         status.innerText = "✅ Processamento concluído!";
         if(processedImages.length > 0) {
             sendAllContainer.style.display = "block";
+            sendAllBtn.style.background = "#5865F2"; // Reseta cor se já tiver usado
+            sendAllBtn.disabled = false;
             sendAllBtn.innerText = `ENVIAR TODAS (${processedImages.length}) AO DISCORD`;
         }
     });
 
-    // Função de envio individual (usada pelos botões dentro dos cards)
-    async function sendToDiscord(dataUrl, buttonElement) {
-        buttonElement.disabled = true;
-        buttonElement.innerText = "ENVIANDO...";
-        const success = await uploadToWebhook(dataUrl);
-        if (success) {
-            buttonElement.innerText = "✅ ENVIADO!";
-            buttonElement.style.background = "#3ba55c";
-        } else {
-            buttonElement.disabled = false;
-            buttonElement.innerText = "ERRO AO ENVIAR";
-        }
-    }
-
-    // Botão de Enviar Todas de uma vez
+    // Botão Único de Envio
     sendAllBtn.addEventListener('click', async () => {
         sendAllBtn.disabled = true;
         let total = processedImages.length;
         
         for(let i = 0; i < total; i++) {
             sendAllBtn.innerText = `ENVIANDO ${i+1} DE ${total}...`;
-            await uploadToWebhook(processedImages[i]);
+            const success = await uploadToWebhook(processedImages[i]);
+            if (!success) {
+                console.error("Falha no envio da imagem " + (i+1));
+            }
         }
         
-        sendAllBtn.innerText = "✅ TODAS ENVIADAS!";
+        sendAllBtn.innerText = "✅ TODAS ENVIADAS COM SUCESSO!";
         sendAllBtn.style.background = "#3ba55c";
     });
 
-    // Função nuclear de upload
     async function uploadToWebhook(dataUrl) {
         try {
             const res = await fetch(dataUrl);
             const blob = await res.blob();
             const formData = new FormData();
-            formData.append('file', blob, `cartaz_${Math.floor(Math.random()*9999)}.png`);
+            formData.append('file', blob, `cartaz_${Math.floor(Math.random()*99999)}.png`);
 
             const response = await fetch(DISCORD_WEBHOOK, {
                 method: 'POST',
@@ -159,7 +150,6 @@
             });
             return response.ok;
         } catch (e) {
-            console.error(e);
             return false;
         }
     }
@@ -176,6 +166,7 @@
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
 
+                    // Lógica de aplicação da logo
                     const areaW = img.width * 0.45, areaH = img.height * 0.35, areaY = img.height * 0.65;
                     ctx.fillStyle = "#0c1a2e"; 
                     ctx.fillRect(0, areaY, areaW, areaH);
@@ -186,14 +177,14 @@
                     ctx.drawImage(userLogo, (areaW - logoWidth) / 2, img.height - logoHeight - 180, logoWidth, logoHeight);
 
                     const dataUrl = canvas.toDataURL("image/png");
-                    processedImages.push(dataUrl); // Adiciona ao array global
+                    processedImages.push(dataUrl);
                     
                     const itemDiv = document.createElement('div');
                     itemDiv.className = "result-item";
                     itemDiv.innerHTML = `
                         <img src="${dataUrl}" class="output-img">
-                        <a href="${dataUrl}" download="cartaz.png" class="save-btn">BAIXAR IMAGEM</a>
-                        <button class="discord-btn" onclick="sendToDiscord('${dataUrl}', this)">ENVIAR ESTA AO DISCORD</button>
+                        <a href="${dataUrl}" download="cartaz_inove.png" class="save-btn">BAIXAR ESTA IMAGEM</a>
+                        <div class="hint">Dica: No iPhone, segure na imagem para salvar na galeria.</div>
                     `;
                     
                     resultContainer.appendChild(itemDiv);
