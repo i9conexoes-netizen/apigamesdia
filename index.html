@@ -5,122 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sports Editor Mobile</title>
     <style>
-        /* Reset básico para mobile */
+        /* Reset e Base */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
         body { 
             font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: #0a0a0a; 
-            color: white; 
-            margin: 0; 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start; 
-            min-height: 100vh;
+            background: #0a0a0a; color: white; margin: 0; 
+            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
         }
+        .container { width: 100%; max-width: 500px; padding: 20px; text-align: center; }
 
-        .container { 
-            width: 100%; 
-            max-width: 500px; 
-            padding: 20px; 
-            text-align: center; 
-        }
-
-        .header { margin-bottom: 30px; }
-        
-        .logo-main { 
-            width: 80px; 
-            height: auto; 
-            margin-bottom: 10px; 
-            filter: drop-shadow(0 0 10px rgba(0,123,255,0.5));
-        }
-
-        h2 { margin: 10px 0; font-weight: 700; font-size: 1.5rem; }
+        /* Header */
+        .logo-main { width: 80px; height: auto; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(0,123,255,0.5)); }
+        h2 { margin: 10px 0; font-size: 1.5rem; }
         p { color: #888; font-size: 0.9rem; }
 
+        /* Upload */
         .upload-wrapper {
-            background: #161616;
-            padding: 30px 20px;
-            border-radius: 20px;
-            border: 2px dashed #333;
-            margin-bottom: 20px;
-            transition: border-color 0.3s;
+            background: #161616; padding: 30px 20px; border-radius: 20px;
+            border: 2px dashed #333; margin-bottom: 20px;
         }
-
         .label-btn { 
-            background: #007bff; 
-            color: white; 
-            padding: 16px 20px; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            display: block; 
-            font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+            background: #007bff; color: white; padding: 16px 20px; 
+            border-radius: 12px; cursor: pointer; font-weight: bold; display: block; 
         }
-
         input[type="file"] { display: none; }
 
-        #status { 
-            margin: 15px 0; 
-            font-size: 0.9rem; 
-            color: #00d4ff; 
-            font-weight: 500; 
+        /* Botão Enviar Todos (Novo) */
+        #sendAllContainer {
+            display: none; /* Escondido por padrão */
+            margin-bottom: 20px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+        .send-all-btn {
+            background: #ff4757; color: white; width: 100%; padding: 18px;
+            border-radius: 15px; border: none; font-weight: bold; font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); cursor: pointer;
         }
 
-        .result-item {
-            background: #161616;
-            padding: 15px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-
-        img.output-img { 
-            width: 100%; 
-            height: auto; 
-            border-radius: 10px; 
-            display: block;
-        }
+        /* Resultados */
+        .result-item { background: #161616; padding: 15px; border-radius: 15px; margin-bottom: 25px; }
+        img.output-img { width: 100%; border-radius: 10px; display: block; }
 
         .save-btn, .discord-btn { 
-            color: white; 
-            padding: 12px 0; 
-            text-decoration: none; 
-            border-radius: 10px; 
-            font-weight: bold; 
-            display: block; 
-            margin-top: 15px;
-            font-size: 0.9rem;
-            border: none;
-            width: 100%;
-            cursor: pointer;
+            color: white; padding: 12px 0; border-radius: 10px; 
+            font-weight: bold; display: block; margin-top: 15px;
+            font-size: 0.9rem; border: none; width: 100%; cursor: pointer;
+            text-decoration: none;
         }
-
         .save-btn { background: #25d366; }
+        .discord-btn { background: #5865F2; }
         
-        .discord-btn { 
-            background: #5865F2; 
-            transition: opacity 0.3s;
-        }
-        
-        .discord-btn:disabled {
-            background: #444;
-            cursor: not-allowed;
-        }
-
-        .hint {
-            font-size: 0.75rem;
-            color: #555;
-            margin-top: 8px;
-        }
+        .status-text { margin: 15px 0; font-size: 0.9rem; color: #00d4ff; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <img src="https://i.imgur.com/lhhqACi.png" class="logo-main" alt="Logo">
+        <img src="https://i.imgur.com/lhhqACi.png" class="logo-main">
         <h2>Sports Editor</h2>
         <p>A logo é aplicada automaticamente.</p>
     </div>
@@ -128,7 +72,11 @@
     <div class="upload-wrapper">
         <label for="imageInput" class="label-btn">SELECIONAR CARTAZES</label>
         <input type="file" id="imageInput" accept="image/*" multiple>
-        <div id="status">Nenhum arquivo selecionado</div>
+        <div id="status" class="status-text">Nenhum arquivo selecionado</div>
+    </div>
+
+    <div id="sendAllContainer">
+        <button id="sendAllBtn" class="send-all-btn">ENVIAR TODAS AO DISCORD</button>
     </div>
 
     <div id="resultContainer"></div>
@@ -138,8 +86,12 @@
     const imageInput = document.getElementById('imageInput');
     const resultContainer = document.getElementById('resultContainer');
     const status = document.getElementById('status');
+    const sendAllContainer = document.getElementById('sendAllContainer');
+    const sendAllBtn = document.getElementById('sendAllBtn');
     
     const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1496868823637430405/S4JcU4341ORrWEJXKIfuiQ4yGUQUZn_RyZJtxKrbQc56AMTakNufby1vAohkP-Ht24-y";
+
+    let processedImages = []; // Array para guardar as imagens geradas
 
     const userLogo = new Image();
     userLogo.crossOrigin = "anonymous"; 
@@ -150,43 +102,65 @@
         if (files.length === 0) return;
 
         resultContainer.innerHTML = "";
+        processedImages = []; // Limpa o array anterior
+        sendAllContainer.style.display = "none";
         status.innerText = `Processando ${files.length} imagem(ns)...`;
 
         for (let file of files) {
             await processAndDisplay(file);
         }
 
-        status.innerText = "✅ Tudo pronto!";
+        status.innerText = "✅ Processamento concluído!";
+        if(processedImages.length > 0) {
+            sendAllContainer.style.display = "block";
+            sendAllBtn.innerText = `ENVIAR TODAS (${processedImages.length}) AO DISCORD`;
+        }
     });
 
+    // Função de envio individual (usada pelos botões dentro dos cards)
     async function sendToDiscord(dataUrl, buttonElement) {
         buttonElement.disabled = true;
         buttonElement.innerText = "ENVIANDO...";
+        const success = await uploadToWebhook(dataUrl);
+        if (success) {
+            buttonElement.innerText = "✅ ENVIADO!";
+            buttonElement.style.background = "#3ba55c";
+        } else {
+            buttonElement.disabled = false;
+            buttonElement.innerText = "ERRO AO ENVIAR";
+        }
+    }
 
+    // Botão de Enviar Todas de uma vez
+    sendAllBtn.addEventListener('click', async () => {
+        sendAllBtn.disabled = true;
+        let total = processedImages.length;
+        
+        for(let i = 0; i < total; i++) {
+            sendAllBtn.innerText = `ENVIANDO ${i+1} DE ${total}...`;
+            await uploadToWebhook(processedImages[i]);
+        }
+        
+        sendAllBtn.innerText = "✅ TODAS ENVIADAS!";
+        sendAllBtn.style.background = "#3ba55c";
+    });
+
+    // Função nuclear de upload
+    async function uploadToWebhook(dataUrl) {
         try {
-            // Converte DataURL para Blob para o Discord aceitar como arquivo
             const res = await fetch(dataUrl);
             const blob = await res.blob();
-            
             const formData = new FormData();
-            formData.append('file', blob, `cartaz_${Date.now()}.png`);
-            formData.append('content', '🎨 Novo cartaz gerado pelo Sports Editor!');
+            formData.append('file', blob, `cartaz_${Math.floor(Math.random()*9999)}.png`);
 
             const response = await fetch(DISCORD_WEBHOOK, {
                 method: 'POST',
                 body: formData
             });
-
-            if (response.ok) {
-                buttonElement.innerText = "✅ ENVIADO COM SUCESSO!";
-                buttonElement.style.background = "#3ba55c";
-            } else {
-                throw new Error("Erro ao enviar");
-            }
-        } catch (error) {
-            alert("Erro ao enviar para o Discord. Verifique sua conexão ou o Webhook.");
-            buttonElement.disabled = false;
-            buttonElement.innerText = "ENVIAR AO DISCORD";
+            return response.ok;
+        } catch (e) {
+            console.error(e);
+            return false;
         }
     }
 
@@ -198,55 +172,29 @@
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    
                     canvas.width = img.width;
                     canvas.height = img.height;
-
                     ctx.drawImage(img, 0, 0);
 
-                    const areaW = img.width * 0.45;
-                    const areaH = img.height * 0.35;
-                    const areaY = img.height * 0.65;
+                    const areaW = img.width * 0.45, areaH = img.height * 0.35, areaY = img.height * 0.65;
                     ctx.fillStyle = "#0c1a2e"; 
                     ctx.fillRect(0, areaY, areaW, areaH);
 
                     const logoWidth = img.width * 0.32; 
                     const scale = logoWidth / userLogo.width;
                     const logoHeight = userLogo.height * scale;
-                    const posX = (areaW - logoWidth) / 2;
-                    const posY = img.height - logoHeight - 180;
-                    ctx.drawImage(userLogo, posX, posY, logoWidth, logoHeight);
+                    ctx.drawImage(userLogo, (areaW - logoWidth) / 2, img.height - logoHeight - 180, logoWidth, logoHeight);
 
                     const dataUrl = canvas.toDataURL("image/png");
+                    processedImages.push(dataUrl); // Adiciona ao array global
                     
                     const itemDiv = document.createElement('div');
                     itemDiv.className = "result-item";
-                    
-                    const finalImg = document.createElement('img');
-                    finalImg.className = "output-img";
-                    finalImg.src = dataUrl;
-                    
-                    // Botão Baixar
-                    const btnDownload = document.createElement('a');
-                    btnDownload.className = "save-btn";
-                    btnDownload.innerText = "BAIXAR IMAGEM";
-                    btnDownload.href = dataUrl;
-                    btnDownload.download = `editado_${Math.floor(Math.random()*10000)}.png`;
-
-                    // Botão Discord
-                    const btnDiscord = document.createElement('button');
-                    btnDiscord.className = "discord-btn";
-                    btnDiscord.innerText = "ENVIAR AO DISCORD";
-                    btnDiscord.onclick = () => sendToDiscord(dataUrl, btnDiscord);
-
-                    const hint = document.createElement('div');
-                    hint.className = "hint";
-                    hint.innerText = "No Discord, a imagem aparecerá no canal configurado.";
-
-                    itemDiv.appendChild(finalImg);
-                    itemDiv.appendChild(btnDownload);
-                    itemDiv.appendChild(btnDiscord);
-                    itemDiv.appendChild(hint);
+                    itemDiv.innerHTML = `
+                        <img src="${dataUrl}" class="output-img">
+                        <a href="${dataUrl}" download="cartaz.png" class="save-btn">BAIXAR IMAGEM</a>
+                        <button class="discord-btn" onclick="sendToDiscord('${dataUrl}', this)">ENVIAR ESTA AO DISCORD</button>
+                    `;
                     
                     resultContainer.appendChild(itemDiv);
                     resolve();
