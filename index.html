@@ -38,7 +38,6 @@
         h2 { margin: 10px 0; font-weight: 700; font-size: 1.5rem; }
         p { color: #888; font-size: 0.9rem; }
 
-        /* Botão de Upload Estilizado */
         .upload-wrapper {
             background: #161616;
             padding: 30px 20px;
@@ -69,7 +68,6 @@
             font-weight: 500; 
         }
 
-        /* Container de Resultados */
         .result-item {
             background: #161616;
             padding: 15px;
@@ -85,8 +83,7 @@
             display: block;
         }
 
-        .save-btn { 
-            background: #25d366; 
+        .save-btn, .discord-btn { 
             color: white; 
             padding: 12px 0; 
             text-decoration: none; 
@@ -95,9 +92,23 @@
             display: block; 
             margin-top: 15px;
             font-size: 0.9rem;
+            border: none;
+            width: 100%;
+            cursor: pointer;
         }
 
-        /* Instrução para iPhone */
+        .save-btn { background: #25d366; }
+        
+        .discord-btn { 
+            background: #5865F2; 
+            transition: opacity 0.3s;
+        }
+        
+        .discord-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
         .hint {
             font-size: 0.75rem;
             color: #555;
@@ -128,7 +139,8 @@
     const resultContainer = document.getElementById('resultContainer');
     const status = document.getElementById('status');
     
-    // Configuração da sua logo
+    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1496868823637430405/S4JcU4341ORrWEJXKIfuiQ4yGUQUZn_RyZJtxKrbQc56AMTakNufby1vAohkP-Ht24-y";
+
     const userLogo = new Image();
     userLogo.crossOrigin = "anonymous"; 
     userLogo.src = "https://i.imgur.com/lhhqACi.png";
@@ -147,6 +159,37 @@
         status.innerText = "✅ Tudo pronto!";
     });
 
+    async function sendToDiscord(dataUrl, buttonElement) {
+        buttonElement.disabled = true;
+        buttonElement.innerText = "ENVIANDO...";
+
+        try {
+            // Converte DataURL para Blob para o Discord aceitar como arquivo
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            
+            const formData = new FormData();
+            formData.append('file', blob, `cartaz_${Date.now()}.png`);
+            formData.append('content', '🎨 Novo cartaz gerado pelo Sports Editor!');
+
+            const response = await fetch(DISCORD_WEBHOOK, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                buttonElement.innerText = "✅ ENVIADO COM SUCESSO!";
+                buttonElement.style.background = "#3ba55c";
+            } else {
+                throw new Error("Erro ao enviar");
+            }
+        } catch (error) {
+            alert("Erro ao enviar para o Discord. Verifique sua conexão ou o Webhook.");
+            buttonElement.disabled = false;
+            buttonElement.innerText = "ENVIAR AO DISCORD";
+        }
+    }
+
     function processAndDisplay(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -156,21 +199,17 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // Mantém a resolução original da foto
                     canvas.width = img.width;
                     canvas.height = img.height;
 
-                    // 1. Desenha o fundo original
                     ctx.drawImage(img, 0, 0);
 
-                    // 2. Limpa a área inferior esquerda
                     const areaW = img.width * 0.45;
                     const areaH = img.height * 0.35;
                     const areaY = img.height * 0.65;
                     ctx.fillStyle = "#0c1a2e"; 
                     ctx.fillRect(0, areaY, areaW, areaH);
 
-                    // 3. Desenha a sua logo
                     const logoWidth = img.width * 0.32; 
                     const scale = logoWidth / userLogo.width;
                     const logoHeight = userLogo.height * scale;
@@ -178,7 +217,6 @@
                     const posY = img.height - logoHeight - 180;
                     ctx.drawImage(userLogo, posX, posY, logoWidth, logoHeight);
 
-                    // 4. Cria o elemento visual para o iPhone
                     const dataUrl = canvas.toDataURL("image/png");
                     
                     const itemDiv = document.createElement('div');
@@ -188,18 +226,26 @@
                     finalImg.className = "output-img";
                     finalImg.src = dataUrl;
                     
-                    const btn = document.createElement('a');
-                    btn.className = "save-btn";
-                    btn.innerText = "BAIXAR IMAGEM";
-                    btn.href = dataUrl;
-                    btn.download = `editado_${Math.floor(Math.random()*10000)}.png`;
+                    // Botão Baixar
+                    const btnDownload = document.createElement('a');
+                    btnDownload.className = "save-btn";
+                    btnDownload.innerText = "BAIXAR IMAGEM";
+                    btnDownload.href = dataUrl;
+                    btnDownload.download = `editado_${Math.floor(Math.random()*10000)}.png`;
+
+                    // Botão Discord
+                    const btnDiscord = document.createElement('button');
+                    btnDiscord.className = "discord-btn";
+                    btnDiscord.innerText = "ENVIAR AO DISCORD";
+                    btnDiscord.onclick = () => sendToDiscord(dataUrl, btnDiscord);
 
                     const hint = document.createElement('div');
                     hint.className = "hint";
-                    hint.innerText = "Dica: No iPhone, você também pode segurar o dedo na imagem para salvar.";
+                    hint.innerText = "No Discord, a imagem aparecerá no canal configurado.";
 
                     itemDiv.appendChild(finalImg);
-                    itemDiv.appendChild(btn);
+                    itemDiv.appendChild(btnDownload);
+                    itemDiv.appendChild(btnDiscord);
                     itemDiv.appendChild(hint);
                     
                     resultContainer.appendChild(itemDiv);
